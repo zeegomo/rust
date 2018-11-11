@@ -648,7 +648,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
 fn generate_lto_work(cgcx: &CodegenContext,
                      modules: Vec<ModuleCodegen>,
                      import_only_modules: Vec<(SerializedModule, WorkProduct)>)
-    -> Vec<(WorkItem, u64)>
+    -> impl Iterator<Item = (WorkItem, u64)>
 {
     let mut timeline = cgcx.time_graph.as_ref().map(|tg| {
         tg.start(CODEGEN_WORKER_TIMELINE,
@@ -670,7 +670,7 @@ fn generate_lto_work(cgcx: &CodegenContext,
         }), 0)
     });
 
-    lto_modules.chain(copy_jobs).collect()
+    lto_modules.chain(copy_jobs)
 }
 
 unsafe fn codegen(cgcx: &CodegenContext,
@@ -2586,8 +2586,8 @@ fn create_msvc_imps(cgcx: &CodegenContext, llcx: &llvm::Context, llmod: &llvm::M
                 imp_name.extend(name.to_bytes());
                 let imp_name = CString::new(imp_name).unwrap();
                 (imp_name, val)
-            })
-            .collect::<Vec<_>>();
+            });
+
         for (imp_name, val) in globals {
             let imp = llvm::LLVMAddGlobal(llmod,
                                           i8p_ty,

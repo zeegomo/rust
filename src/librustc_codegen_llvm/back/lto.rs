@@ -279,17 +279,19 @@ fn fat_lto(cgcx: &CodegenContext,
         // and we want to move everything to the same LLVM context. Currently the
         // way we know of to do that is to serialize them to a string and them parse
         // them later. Not great but hey, that's why it's "fat" LTO, right?
-        for module in modules {
+        serialized_modules.extend(modules.into_iter().map(|module| {
             let buffer = ModuleBuffer::new(module.module_llvm.llmod());
             let llmod_id = CString::new(&module.name[..]).unwrap();
-            serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
-        }
+
+            (SerializedModule::Local(buffer), llmod_id)
+        }));
 
         // For all serialized bitcode files we parse them and link them in as we did
         // above, this is all mostly handled in C++. Like above, though, we don't
         // know much about the memory management here so we err on the side of being
         // save and persist everything with the original module.
         let mut linker = Linker::new(llmod);
+        serialized_bitcode.reserve(serialized_modules.len());
         for (bc_decoded, name) in serialized_modules {
             info!("linking {:?}", name);
             time_ext(cgcx.time_passes, None, &format!("ll link {:?}", name), || {
@@ -403,9 +405,10 @@ fn thin_lto(cgcx: &CodegenContext,
             .map(|&(_, ref wp)| (wp.cgu_name.clone(), wp.clone()))
             .collect();
 
-        let mut thin_buffers = Vec::new();
-        let mut module_names = Vec::new();
-        let mut thin_modules = Vec::new();
+        // Reserve memory only partially in order to avoid OOM
+        let mut thin_buffers = Vec::with_capacity(modules.len());
+        let mut module_names = Vec::with_capacity(modules.len());
+        let mut thin_modules = Vec::with_capacity(modules.len());
 
         // FIXME: right now, like with fat LTO, we serialize all in-memory
         //        modules before working with them and ThinLTO. We really
@@ -414,7 +417,7 @@ fn thin_lto(cgcx: &CodegenContext,
         //        into the global index. It turns out that this loop is by far
         //        the most expensive portion of this small bit of global
         //        analysis!
-        for (i, module) in modules.iter().enumerate() {
+        for (i, module) in modules.into_iter().enumerate() {
             info!("local module: {} - {}", i, module.name);
             let name = CString::new(module.name.clone()).unwrap();
             let buffer = ThinBuffer::new(module.module_llvm.llmod());
@@ -460,11 +463,14 @@ fn thin_lto(cgcx: &CodegenContext,
         //        incremental ThinLTO first where we could actually avoid
         //        looking at upstream modules entirely sometimes (the contents,
         //        we must always unconditionally look at the index).
-        let mut serialized = Vec::new();
-
         let cached_modules = cached_modules.into_iter().map(|(sm, wp)| {
             (sm, CString::new(wp.cgu_name).unwrap())
         });
+
+        let upstream_cached_len = serialized_modules.len() + cached_modules.len();
+        let mut serialized = Vec::with_capacity(upstream_cached_len);
+        thin_modules.reserve(upstream_cached_len);
+        module_names.reserve(upstream_cached_len);
 
         for (module, name) in serialized_modules.into_iter().chain(cached_modules) {
             info!("upstream or cached module {:?}", name);
@@ -521,7 +527,7 @@ fn thin_lto(cgcx: &CodegenContext,
         });
 
         let mut copy_jobs = vec![];
-        let mut opt_jobs = vec![];
+        let mut opt_jobs = Vec::with_capacity(shared.module_names.len());
 
         info!("checking which modules can be-reused and which have to be re-optimized.");
         for (module_index, module_name) in shared.module_names.iter().enumerate() {
