@@ -1207,7 +1207,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.unreachable();
             }
 
-            mir::TerminatorKind::Drop { place, target, unwind } => {
+            mir::TerminatorKind::Drop { place, target, unwind, is_replace: _ } => {
                 self.codegen_drop_terminator(helper, bx, place, target, unwind);
             }
 
@@ -1215,10 +1215,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_assert_terminator(
                     helper, bx, terminator, cond, expected, msg, target, cleanup,
                 );
-            }
-
-            mir::TerminatorKind::DropAndReplace { .. } => {
-                bug!("undesugared DropAndReplace in codegen: {:?}", terminator);
             }
 
             mir::TerminatorKind::Call {

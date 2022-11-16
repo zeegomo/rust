@@ -292,10 +292,6 @@ fn check_terminator<'a, 'tcx>(
         | TerminatorKind::Unreachable => Ok(()),
 
         TerminatorKind::Drop { place, .. } => check_place(tcx, *place, span, body),
-        TerminatorKind::DropAndReplace { place, value, .. } => {
-            check_place(tcx, *place, span, body)?;
-            check_operand(tcx, value, span, body)
-        },
 
         TerminatorKind::SwitchInt {
             discr,

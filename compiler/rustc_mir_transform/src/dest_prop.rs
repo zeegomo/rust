@@ -544,23 +544,24 @@ impl<'a> Conflicts<'a> {
 
     fn record_terminator_conflicts(&mut self, term: &Terminator<'_>) {
         match &term.kind {
-            TerminatorKind::DropAndReplace {
-                place: dropped_place,
-                value,
-                target: _,
-                unwind: _,
-            } => {
-                if let Some(place) = value.place()
-                    && !place.is_indirect()
-                    && !dropped_place.is_indirect()
-                {
-                    self.record_local_conflict(
-                        place.local,
-                        dropped_place.local,
-                        "DropAndReplace operand overlap",
-                    );
-                }
-            }
+            // FIXME: ??
+            // TerminatorKind::DropAndReplace {
+            //     place: dropped_place,
+            //     value,
+            //     target: _,
+            //     unwind: _,
+            // } => {
+            //     if let Some(place) = value.place()
+            //         && !place.is_indirect()
+            //         && !dropped_place.is_indirect()
+            //     {
+            //         self.record_local_conflict(
+            //             place.local,
+            //             dropped_place.local,
+            //             "DropAndReplace operand overlap",
+            //         );
+            //     }
+            // }
             TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
                 if let Some(place) = value.place() {
                     if !place.is_indirect() && !resume_arg.is_indirect() {

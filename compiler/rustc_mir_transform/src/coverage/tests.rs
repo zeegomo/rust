@@ -88,7 +88,6 @@ impl<'tcx> MockBlocks<'tcx> {
             TerminatorKind::Assert { ref mut target, .. }
             | TerminatorKind::Call { target: Some(ref mut target), .. }
             | TerminatorKind::Drop { ref mut target, .. }
-            | TerminatorKind::DropAndReplace { ref mut target, .. }
             | TerminatorKind::FalseEdge { real_target: ref mut target, .. }
             | TerminatorKind::FalseUnwind { real_target: ref mut target, .. }
             | TerminatorKind::Goto { ref mut target }
@@ -187,7 +186,6 @@ fn debug_basic_blocks<'tcx>(mir_body: &Body<'tcx>) -> String {
                     TerminatorKind::Assert { target, .. }
                     | TerminatorKind::Call { target: Some(target), .. }
                     | TerminatorKind::Drop { target, .. }
-                    | TerminatorKind::DropAndReplace { target, .. }
                     | TerminatorKind::FalseEdge { real_target: target, .. }
                     | TerminatorKind::FalseUnwind { real_target: target, .. }
                     | TerminatorKind::Goto { target }
