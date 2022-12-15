@@ -165,6 +165,7 @@ where
     succ: BasicBlock,
     unwind: Unwind,
     is_replace: bool,
+    verbose: bool,
 }
 
 /// "Elaborates" a drop of `place`/`path` and patches `bb`'s terminator to execute it.
@@ -184,11 +185,13 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     unwind: Unwind,
     bb: BasicBlock,
     is_replace: bool,
+    verbose: bool,
 ) where
     D: DropElaborator<'b, 'tcx>,
     'tcx: 'b,
 {
-    DropCtxt { elaborator, source_info, place, path, succ, unwind, is_replace }.elaborate_drop(bb)
+    DropCtxt { elaborator, source_info, place, path, succ, unwind, is_replace, verbose }
+        .elaborate_drop(bb)
 }
 
 impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
@@ -223,9 +226,10 @@ where
     // FIXME: I think we should just control the flags externally,
     // and then we do not need this machinery.
     pub fn elaborate_drop(&mut self, bb: BasicBlock) {
-        debug!("elaborate_drop({:?}, {:?})", bb, self);
         let style = self.elaborator.drop_style(self.path, DropFlagMode::Deep);
-        debug!("elaborate_drop({:?}, {:?}): live - {:?}", bb, self, style);
+        if self.verbose {
+            eprintln!("style: {:?} {:?}", self, style);
+        }
         match style {
             DropStyle::Dead => {
                 self.elaborator
@@ -302,6 +306,7 @@ where
                 succ,
                 unwind,
                 is_replace: self.is_replace,
+                verbose: self.verbose,
             }
             .elaborated_drop_block()
         } else {
@@ -317,6 +322,7 @@ where
                 // our own drop flag.
                 path: self.path,
                 is_replace: self.is_replace,
+                verbose: self.verbose,
             }
             .complete_drop(succ, unwind)
         }

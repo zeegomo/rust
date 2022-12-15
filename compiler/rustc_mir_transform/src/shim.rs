@@ -202,6 +202,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
                 elaborate_drops::Unwind::To(resume_block),
                 START_BLOCK,
                 false,
+                false,
             );
             elaborator.patch
         };

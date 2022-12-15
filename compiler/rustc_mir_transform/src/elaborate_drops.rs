@@ -40,7 +40,28 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         let elaborate_patch = {
             let body = &*body;
             let env = MoveDataParamEnv { move_data, param_env };
+
             let dead_unwinds = find_dead_unwinds(tcx, body, &env, &un_derefer);
+
+            if let Some(bb) = body.basic_blocks.postorder().first() {
+                let _term = body.basic_blocks.get(*bb).unwrap().terminator();
+                let verbose = format!("{:?}", _term.source_info).contains("fn-size");
+                if verbose {
+                    eprintln!("elaborate drops {:?} {:?}", _term, dead_unwinds);
+                }
+            }
+
+            let mut dead_blocks = BitSet::new_empty(body.basic_blocks.len());
+            for bb in dead_unwinds.iter() {
+                if let Some(&TerminatorKind::Drop {
+                    is_replace: true,
+                    unwind: Some(unwind_to),
+                    ..
+                }) = body.basic_blocks.get(bb).map(|bb| &bb.terminator().kind)
+                {
+                    dead_blocks.insert(unwind_to);
+                }
+            }
 
             let inits = MaybeInitializedPlaces::new(tcx, body, &env)
                 .into_engine(tcx, body)
@@ -58,6 +79,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 .into_results_cursor(body);
 
             ElaborateDropsCtxt {
+                dead_blocks,
                 tcx,
                 body,
                 env: &env,
@@ -65,6 +87,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 drop_flags: Default::default(),
                 patch: MirPatch::new(body),
                 un_derefer: un_derefer,
+                verbose: false,
             }
             .elaborate()
         };
@@ -92,6 +115,8 @@ fn find_dead_unwinds<'tcx>(
         .iterate_to_fixpoint()
         .into_results_cursor(body);
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
+        let source_info = bb_data.terminator().source_info;
+        let verbose = false;
         let place = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref place, unwind: Some(_), .. } => {
                 und.derefer(place.as_ref(), body).unwrap_or(*place)
@@ -99,28 +124,36 @@ fn find_dead_unwinds<'tcx>(
             _ => continue,
         };
 
-        debug!("find_dead_unwinds @ {:?}: {:?}", bb, bb_data);
+        if verbose {
+            eprintln!("find_dead_unwinds @ {:?} {:?}: {:?}", source_info, bb, bb_data);
+        }
 
         let LookupResult::Exact(path) = env.move_data.rev_lookup.find(place.as_ref()) else {
-            debug!("find_dead_unwinds: has parent; skipping");
+            if verbose {
+            eprintln!("find_dead_unwinds: has parent; skipping");
+            }
             continue;
         };
 
         flow_inits.seek_before_primary_effect(body.terminator_loc(bb));
-        debug!(
-            "find_dead_unwinds @ {:?}: path({:?})={:?}; init_data={:?}",
-            bb,
-            place,
-            path,
-            flow_inits.get()
-        );
+        if verbose {
+            eprintln!(
+                "find_dead_unwinds @ {:?}: path({:?})={:?}; init_data={:?}",
+                bb,
+                place,
+                path,
+                flow_inits.get()
+            );
+        }
 
         let mut maybe_live = false;
         on_all_drop_children_bits(tcx, body, &env, path, |child| {
             maybe_live |= flow_inits.contains(child);
         });
+        if verbose {
+            eprintln!("find_dead_unwinds @ {:?}: maybe_live={}", bb, maybe_live);
+        }
 
-        debug!("find_dead_unwinds @ {:?}: maybe_live={}", bb, maybe_live);
         if !maybe_live {
             dead_unwinds.insert(bb);
         }
@@ -175,6 +208,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
     }
 
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle {
+        if self.ctxt.verbose {
+            eprintln!("elaborate_drop stateinit {:?}", path);
+        }
         let ((maybe_live, maybe_dead), multipart) = match mode {
             DropFlagMode::Shallow => (self.ctxt.init_data.maybe_live_dead(path), false),
             DropFlagMode::Deep => {
@@ -183,7 +219,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
                 let mut children_count = 0;
                 on_all_drop_children_bits(self.tcx(), self.body(), self.ctxt.env, path, |child| {
                     let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
-                    debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
+                    if self.ctxt.verbose {
+                        eprintln!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
+                    }
                     some_live |= live;
                     some_dead |= dead;
                     children_count += 1;
@@ -260,6 +298,8 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
     un_derefer: UnDerefer<'tcx>,
+    verbose: bool,
+    dead_blocks: BitSet<BasicBlock>,
 }
 
 impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
@@ -353,6 +393,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn elaborate_drops(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
+            if self.dead_blocks.contains(bb) {
+                eprintln!("skipping block {:?}", bb);
+                continue;
+            }
             let loc = Location { block: bb, statement_index: data.statements.len() };
             let terminator = data.terminator();
 
@@ -363,7 +407,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         place = new_place;
                     }
 
+                    let verbose = format!("{:?}", terminator.source_info).contains("fn-size");
+                    self.verbose = verbose;
+
                     self.init_data.seek_before(loc);
+                    eprintln!("seeking before {:?}", loc);
                     match self.move_data().rev_lookup.find(place.as_ref()) {
                         LookupResult::Exact(path) => elaborate_drop(
                             &mut Elaborator { ctxt: self },
@@ -378,6 +426,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             },
                             bb,
                             is_replace,
+                            verbose,
                         ),
                         LookupResult::Parent(..) => {
                             if !is_replace {
@@ -403,6 +452,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             );
                         }
                     }
+                    self.verbose = false;
                 }
                 _ => continue,
             }

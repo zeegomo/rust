@@ -313,6 +313,11 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
+        let verbose = false;
+
+        if verbose {
+            eprintln!("statement {:?} {:?}", statement, location);
+        }
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
         });
@@ -336,6 +341,10 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
+        let verbose = false;
+        if verbose {
+            eprintln!("terminator {:?} {:?}", terminator, location);
+        }
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
         });

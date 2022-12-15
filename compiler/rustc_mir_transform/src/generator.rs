@@ -917,6 +917,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             unwind,
             block,
             *is_replace,
+            false,
         );
     }
     elaborator.patch.apply(body);
@@ -1275,6 +1276,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             }
         };
 
+        dump_mir(tcx, None, "generator_init", &0, body, |_, _| Ok(()));
         // Compute GeneratorState<yield_ty, return_ty>
         let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
         let state_adt_ref = tcx.adt_def(state_did);
@@ -1347,6 +1349,8 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             discr_ty,
         };
         transform.visit_body(body);
+
+        dump_mir(tcx, None, "generator_first-transform", &0, body, |_, _| Ok(()));
 
         // Update our MIR struct to reflect the changes we've made
         body.arg_count = 2; // self, resume arg

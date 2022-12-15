@@ -287,7 +287,27 @@ impl Direction for Backward {
                     if unwind == bb =>
                 {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
+                        let verbose = format!("{:?}", _bb_data.terminator().source_info)
+                            .contains("fn-size-uninit");
+                        if verbose {
+                            eprintln!(
+                                "propagating backwards through {:?} {:?} {:?}",
+                                _bb_data.terminator(),
+                                bb,
+                                dead_unwinds
+                            );
+                        }
                         propagate(pred, exit_state);
+                    } else {
+                        let verbose = format!("{:?}", _bb_data.terminator().source_info)
+                            .contains("fn-size-uninit");
+                        if verbose {
+                            eprintln!(
+                                "not propagating through {:?} {:?}",
+                                _bb_data.terminator(),
+                                bb
+                            );
+                        }
                     }
                 }
 
@@ -501,7 +521,27 @@ impl Direction for Forward {
             | FalseUnwind { real_target: target, unwind } => {
                 if let Some(unwind) = unwind {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
+                        let verbose = format!("{:?}", bb_data.terminator().source_info)
+                            .contains("fn-size-uninit");
+                        if verbose {
+                            eprintln!(
+                                "propagating forward through {:?} {:?} {:?}",
+                                bb_data.terminator(),
+                                bb,
+                                dead_unwinds
+                            );
+                        }
                         propagate(unwind, exit_state);
+                    } else {
+                        let verbose = format!("{:?}", bb_data.terminator().source_info)
+                            .contains("fn-size-uninit");
+                        if verbose {
+                            eprintln!(
+                                "not propagating through {:?} {:?}",
+                                bb_data.terminator(),
+                                bb
+                            );
+                        }
                     }
                 }
 
