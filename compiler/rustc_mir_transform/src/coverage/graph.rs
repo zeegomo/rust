@@ -155,7 +155,8 @@ impl CoverageGraph {
                 TerminatorKind::Goto { .. }
                 | TerminatorKind::Resume
                 | TerminatorKind::Unreachable
-                | TerminatorKind::Drop { .. }
+                | TerminatorKind::DropIfInit { .. }
+                | TerminatorKind::DropIf { .. }
                 | TerminatorKind::Call { .. }
                 | TerminatorKind::GeneratorDrop
                 | TerminatorKind::Assert { .. }

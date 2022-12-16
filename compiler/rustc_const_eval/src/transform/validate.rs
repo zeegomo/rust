@@ -786,14 +786,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Drop { target, unwind, .. } => {
+            TerminatorKind::DropIfInit { target, unwind, .. }
+            | TerminatorKind::DropIf { target, unwind, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 if let Some(unwind) = unwind {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
             // FIXME ??
-            // TerminatorKind::DropAndReplace { target, unwind, .. } => {
+            // TerminatorKind::DropIfInitAndReplace { target, unwind, .. } => {
             //     if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
             //         self.fail(
             //             location,

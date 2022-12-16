@@ -340,7 +340,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             Self::update_bits(trans, path, s)
         });
 
-        if let mir::TerminatorKind::Drop { place, .. } = terminator.kind {
+        if let mir::TerminatorKind::DropIfInit { place, .. } = terminator.kind {
             if let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref()) {
                 on_all_children_bits(self.tcx, self.body, self.move_data(), mpi, |mpi| {
                     Self::update_bits(trans, mpi, DropFlagState::Absent)
@@ -471,7 +471,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        if let mir::TerminatorKind::Drop { place, .. } = terminator.kind {
+        if let mir::TerminatorKind::DropIfInit { place, .. } = terminator.kind {
             if let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref()) {
                 on_all_children_bits(self.tcx, self.body, self.move_data(), mpi, |mpi| {
                     Self::update_bits(trans, mpi, DropFlagState::Absent)
@@ -595,7 +595,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        if let mir::TerminatorKind::Drop { place, .. } = terminator.kind {
+        if let mir::TerminatorKind::DropIfInit { place, .. } = terminator.kind {
             if let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref()) {
                 on_all_children_bits(self.tcx, self.body, self.move_data(), mpi, |mpi| {
                     Self::update_bits(trans, mpi, DropFlagState::Absent)

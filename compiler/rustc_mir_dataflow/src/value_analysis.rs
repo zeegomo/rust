@@ -227,7 +227,7 @@ pub trait ValueAnalysis<'tcx> {
             TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
                 // Effect is applied by `handle_call_return`.
             }
-            TerminatorKind::Drop { .. } => {
+            TerminatorKind::DropIf { .. } | TerminatorKind::DropIfInit { .. } => {
                 // We don't track dropped places.
             }
             TerminatorKind::Yield { .. } => {

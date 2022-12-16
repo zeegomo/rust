@@ -281,7 +281,7 @@ impl Direction for Backward {
                 // Ignore dead unwinds.
                 mir::TerminatorKind::Call { cleanup: Some(unwind), .. }
                 | mir::TerminatorKind::Assert { cleanup: Some(unwind), .. }
-                | mir::TerminatorKind::Drop { unwind: Some(unwind), .. }
+                | mir::TerminatorKind::DropIfInit { unwind: Some(unwind), .. }
                 | mir::TerminatorKind::FalseUnwind { unwind: Some(unwind), .. }
                 | mir::TerminatorKind::InlineAsm { cleanup: Some(unwind), .. }
                     if unwind == bb =>
@@ -497,7 +497,8 @@ impl Direction for Forward {
             Goto { target } => propagate(target, exit_state),
 
             Assert { target, cleanup: unwind, expected: _, msg: _, cond: _ }
-            | Drop { target, unwind, .. }
+            | DropIfInit { target, unwind, .. }
+            | DropIf { target, unwind, .. }
             | FalseUnwind { real_target: target, unwind } => {
                 if let Some(unwind) = unwind {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {

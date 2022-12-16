@@ -1342,7 +1342,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | TerminatorKind::Return
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::InlineAsm { .. } => {
@@ -1645,7 +1646,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Unreachable => {}
-            TerminatorKind::Drop { target, unwind, .. }
+            TerminatorKind::DropIfInit { target, unwind, .. }
+            | TerminatorKind::DropIf { target, unwind, .. }
             | TerminatorKind::Assert { target, cleanup: unwind, .. } => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);
                 if let Some(unwind) = unwind {

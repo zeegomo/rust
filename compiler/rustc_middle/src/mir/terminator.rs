@@ -160,7 +160,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Call { target: None, cleanup: Some(t), .. }
             | Call { target: Some(t), cleanup: None, .. }
             | Yield { resume: t, drop: None, .. }
-            | Drop { target: t, unwind: None, .. }
+            | DropIfInit { target: t, unwind: None, .. }
+            | DropIf { target: t, unwind: None, .. }
             | Assert { target: t, cleanup: None, .. }
             | FalseUnwind { real_target: t, unwind: None }
             | InlineAsm { destination: Some(t), cleanup: None, .. }
@@ -169,7 +170,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Call { target: Some(t), cleanup: Some(ref u), .. }
             | Yield { resume: t, drop: Some(ref u), .. }
-            | Drop { target: t, unwind: Some(ref u), .. }
+            | DropIfInit { target: t, unwind: Some(ref u), .. }
+            | DropIf { target: t, unwind: Some(ref u), .. }
             | Assert { target: t, cleanup: Some(ref u), .. }
             | FalseUnwind { real_target: t, unwind: Some(ref u) }
             | InlineAsm { destination: Some(t), cleanup: Some(ref u), .. } => {
@@ -198,7 +200,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Call { target: None, cleanup: Some(ref mut t), .. }
             | Call { target: Some(ref mut t), cleanup: None, .. }
             | Yield { resume: ref mut t, drop: None, .. }
-            | Drop { target: ref mut t, unwind: None, .. }
+            | DropIfInit { target: ref mut t, unwind: None, .. }
+            | DropIf { target: ref mut t, unwind: None, .. }
             | Assert { target: ref mut t, cleanup: None, .. }
             | FalseUnwind { real_target: ref mut t, unwind: None }
             | InlineAsm { destination: Some(ref mut t), cleanup: None, .. }
@@ -207,7 +210,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Call { target: Some(ref mut t), cleanup: Some(ref mut u), .. }
             | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
-            | Drop { target: ref mut t, unwind: Some(ref mut u), .. }
+            | DropIfInit { target: ref mut t, unwind: Some(ref mut u), .. }
+            | DropIf { target: ref mut t, unwind: Some(ref mut u), .. }
             | Assert { target: ref mut t, cleanup: Some(ref mut u), .. }
             | FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) }
             | InlineAsm { destination: Some(ref mut t), cleanup: Some(ref mut u), .. } => {
@@ -233,7 +237,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::FalseEdge { .. } => None,
             TerminatorKind::Call { cleanup: ref unwind, .. }
             | TerminatorKind::Assert { cleanup: ref unwind, .. }
-            | TerminatorKind::Drop { ref unwind, .. }
+            | TerminatorKind::DropIfInit { ref unwind, .. }
+            | TerminatorKind::DropIf { ref unwind, .. }
             | TerminatorKind::FalseUnwind { ref unwind, .. }
             | TerminatorKind::InlineAsm { cleanup: ref unwind, .. } => Some(unwind),
         }
@@ -252,7 +257,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::FalseEdge { .. } => None,
             TerminatorKind::Call { cleanup: ref mut unwind, .. }
             | TerminatorKind::Assert { cleanup: ref mut unwind, .. }
-            | TerminatorKind::Drop { ref mut unwind, .. }
+            | TerminatorKind::DropIfInit { ref mut unwind, .. }
+            | TerminatorKind::DropIf { ref mut unwind, .. }
             | TerminatorKind::FalseUnwind { ref mut unwind, .. }
             | TerminatorKind::InlineAsm { cleanup: ref mut unwind, .. } => Some(unwind),
         }
@@ -316,7 +322,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             Abort => write!(fmt, "abort"),
             Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { place, .. } => write!(fmt, "drop({:?})", place),
+            DropIfInit { place, .. } => write!(fmt, "drop_if_init({:?})", place),
+            DropIf { place, test, .. } => write!(fmt, "drop_if({:?}, {:?})", place, test),
             Call { func, args, destination, .. } => {
                 write!(fmt, "{:?} = ", destination)?;
                 write!(fmt, "{:?}(", func)?;
@@ -417,8 +424,10 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { target: None, cleanup: None, .. } => vec![],
             Yield { drop: Some(_), .. } => vec!["resume".into(), "drop".into()],
             Yield { drop: None, .. } => vec!["resume".into()],
-            Drop { unwind: None, .. } => vec!["return".into()],
-            Drop { unwind: Some(_), .. } => vec!["return".into(), "unwind".into()],
+            DropIfInit { unwind: None, .. } => vec!["return".into()],
+            DropIfInit { unwind: Some(_), .. } => vec!["return".into(), "unwind".into()],
+            DropIf { unwind: None, .. } => vec!["return".into()],
+            DropIf { unwind: Some(_), .. } => vec!["return".into(), "unwind".into()],
             Assert { cleanup: None, .. } => vec!["".into()],
             Assert { .. } => vec!["success".into(), "unwind".into()],
             FalseEdge { .. } => vec!["real".into(), "imaginary".into()],

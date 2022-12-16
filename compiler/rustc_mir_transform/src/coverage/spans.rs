@@ -847,7 +847,8 @@ pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Sp
         // actually stops before the if's block.)
         TerminatorKind::Unreachable // Unreachable blocks are not connected to the MIR CFG
         | TerminatorKind::Assert { .. }
-        | TerminatorKind::Drop { .. }
+        | TerminatorKind::DropIfInit { .. }
+        | TerminatorKind::DropIf { .. }
         | TerminatorKind::SwitchInt { .. }
         // For `FalseEdge`, only the `real` branch is taken, so it is similar to a `Goto`.
         | TerminatorKind::FalseEdge { .. }

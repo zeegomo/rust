@@ -63,11 +63,13 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_middle::ty::{GeneratorSubsts, SubstsRef};
+use rustc_mir_dataflow::elaborate_drops::DropElaborator;
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{self, Analysis};
+use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::PanicStrategy;
 use std::{iter, ops};
@@ -889,15 +891,35 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let (target, unwind, source_info, is_replace) = match block_data.terminator() {
             Terminator {
                 source_info,
-                kind: TerminatorKind::Drop { place, target, unwind, is_replace },
+                kind: TerminatorKind::DropIfInit { place, target, unwind, is_replace },
             } => {
                 if let Some(local) = place.as_local() {
                     if local == SELF_ARG {
                         (target, unwind, source_info, is_replace)
                     } else {
+                        elaborator.patch().patch_terminator(
+                            block,
+                            TerminatorKind::DropIf {
+                                place: *place,
+                                target: *target,
+                                unwind: unwind.clone(),
+                                is_replace: *is_replace,
+                                test: constant_bool(tcx, source_info.span, true),
+                            },
+                        );
                         continue;
                     }
                 } else {
+                    elaborator.patch().patch_terminator(
+                        block,
+                        TerminatorKind::DropIf {
+                            place: *place,
+                            target: *target,
+                            unwind: unwind.clone(),
+                            is_replace: *is_replace,
+                            test: constant_bool(tcx, source_info.span, true),
+                        },
+                    );
                     continue;
                 }
             }
@@ -908,6 +930,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         } else {
             Unwind::To(unwind.unwrap_or_else(|| elaborator.patch.resume_block()))
         };
+
         elaborate_drop(
             &mut elaborator,
             *source_info,
@@ -920,6 +943,14 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         );
     }
     elaborator.patch.apply(body);
+}
+
+fn constant_bool<'tcx>(tcx: TyCtxt<'tcx>, span: Span, val: bool) -> Operand<'tcx> {
+    Operand::Constant(Box::new(Constant {
+        span,
+        user_ty: None,
+        literal: ConstantKind::from_bool(tcx, val),
+    }))
 }
 
 fn create_generator_drop_shim<'tcx>(
@@ -1062,7 +1093,8 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             }
 
             // These may unwind.
-            TerminatorKind::Drop { .. }
+            TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Assert { .. } => return true,
@@ -1151,7 +1183,7 @@ fn create_generator_resume_function<'tcx>(
 fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
-    let term = TerminatorKind::Drop {
+    let term = TerminatorKind::DropIfInit {
         place: Place::from(SELF_ARG),
         target: return_block,
         unwind: None,
@@ -1245,8 +1277,13 @@ fn create_cases<'tcx>(
         .collect()
 }
 
+struct DeelaborateDrops<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
 impl<'tcx> MirPass<'tcx> for StateTransform {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        dump_mir(tcx, None, "generator_start", &0, body, |_, _| Ok(()));
         let Some(yield_ty) = body.yield_ty() else {
             // This only applies to generators
             return;
@@ -1330,6 +1367,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
 
         let can_return = can_return(tcx, body, tcx.param_env(body.source.def_id()));
+        dump_mir(tcx, None, "generator_pre-transform", &0, body, |_, _| Ok(()));
 
         // Run the transformation which converts Places from Local to generator struct
         // accesses for locals in `remap`.
@@ -1348,12 +1386,17 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         };
         transform.visit_body(body);
 
+        // Drops are now not elaborated again by the generator drop elaboration because it only looks for drop-if-init
+        let mut de_elaborate_drops = DeelaborateDrops { tcx };
+        de_elaborate_drops.visit_body(body);
+
         // Update our MIR struct to reflect the changes we've made
         body.arg_count = 2; // self, resume arg
         body.spread_arg = None;
 
         body.generator.as_mut().unwrap().yield_ty = None;
         body.generator.as_mut().unwrap().generator_layout = Some(layout);
+        dump_mir(tcx, None, "generator_insert", &0, body, |_, _| Ok(()));
 
         // Insert `drop(generator_struct)` which is used to drop upvars for generators in
         // the unresumed state.
@@ -1498,11 +1541,35 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | TerminatorKind::Abort
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {}
         }
+    }
+}
+
+impl<'tcx> MutVisitor<'tcx> for DeelaborateDrops<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, _location: Location) {
+        let (place, target, unwind, is_replace) = if let TerminatorKind::DropIf {
+            place,
+            target,
+            unwind,
+            test: Operand::Constant(_),
+            is_replace,
+        } = &terminator.kind
+        {
+            (*place, *target, *unwind, *is_replace)
+        } else {
+            return;
+        };
+
+        terminator.kind = TerminatorKind::DropIfInit { place, target, unwind, is_replace };
     }
 }

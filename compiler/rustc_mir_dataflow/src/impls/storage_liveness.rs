@@ -199,7 +199,8 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             // variants are added.
             TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
@@ -236,7 +237,8 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             TerminatorKind::Yield { .. }
             | TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop

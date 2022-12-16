@@ -652,7 +652,8 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::SwitchInt { ref discr, switch_ty: _, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
-            TerminatorKind::Drop { place, target, unwind, is_replace } => {
+            TerminatorKind::DropIfInit { place, target, unwind, is_replace }
+            | TerminatorKind::DropIf { place, target, unwind, is_replace, test: _ } => {
                 debug!(
                     "visit_terminator_drop \
                      loc: {:?} term: {:?} place: {:?} span: {:?}",
@@ -803,7 +804,8 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ }
             | TerminatorKind::Goto { .. }

@@ -484,7 +484,7 @@ macro_rules! make_mir_visitor {
                         self.visit_ty($(& $mutability)? *switch_ty, TyContext::Location(location));
                     }
 
-                    TerminatorKind::Drop {
+                    TerminatorKind::DropIfInit {
                         place,
                         target: _,
                         unwind: _,
@@ -493,6 +493,24 @@ macro_rules! make_mir_visitor {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
+                            location
+                        );
+                    }
+
+                    TerminatorKind::DropIf {
+                        place,
+                        target: _,
+                        unwind: _,
+                        test,
+                        is_replace: _,
+                    } => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::MutatingUse(MutatingUseContext::Drop),
+                            location
+                        );
+                        self.visit_operand(
+                            test,
                             location
                         );
                     }

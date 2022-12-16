@@ -939,7 +939,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // drop and replace might have moved the assignment to the next block
         let maybe_additional_statement = if let Some(Terminator {
-            kind: TerminatorKind::Drop { target: drop_target, is_replace: true, .. },
+            kind: TerminatorKind::DropIfInit { target: drop_target, is_replace: true, .. },
             ..
         }) = self.body[location.block].terminator
         {

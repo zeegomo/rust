@@ -111,7 +111,9 @@ where
         self.super_terminator(terminator, location);
 
         match terminator.kind {
-            mir::TerminatorKind::Drop { place: dropped_place, .. } => {
+            mir::TerminatorKind::DropIfInit { place: dropped_place, .. }
+            | mir::TerminatorKind::DropIf { place: dropped_place, .. } => {
+                // | mir::TerminatorKind::DropIf { place: dropped_place, .. } => {
                 // Drop terminators may call custom drop glue (`Drop::drop`), which takes `&mut
                 // self` as a parameter. In the general case, a drop impl could launder that
                 // reference into the surrounding environment through a raw pointer, thus creating
@@ -122,7 +124,6 @@ where
                 // [#61069]: https://github.com/rust-lang/rust/pull/61069
                 self.trans.gen(dropped_place.local);
             }
-
             TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }

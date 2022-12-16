@@ -625,7 +625,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     outer_source_info,
-                    TerminatorKind::Drop {
+                    TerminatorKind::DropIfInit {
                         place: to_drop,
                         target: success,
                         unwind: None,

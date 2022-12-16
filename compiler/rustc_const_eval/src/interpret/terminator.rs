@@ -119,10 +119,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Drop { place, target, unwind, is_replace: _ } => {
+            DropIf { place, target, unwind, .. } => {
                 let place = self.eval_place(place)?;
                 let ty = place.layout.ty;
-                trace!("TerminatorKind::drop: {:?}, type {}", place, ty);
+                trace!("TerminatorKind::DropIf: {:?}, type {}", place, ty);
 
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_in_place(&place, instance, target, unwind)?;
@@ -156,7 +156,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Unreachable => throw_ub!(Unreachable),
 
             // These should never occur for MIR we actually run.
-            FalseEdge { .. } | FalseUnwind { .. } | Yield { .. } | GeneratorDrop => span_bug!(
+            DropIfInit { .. }
+            | FalseEdge { .. }
+            | FalseUnwind { .. }
+            | Yield { .. }
+            | GeneratorDrop => span_bug!(
                 terminator.source_info.span,
                 "{:#?} should have been eliminated by MIR pass",
                 terminator.kind
