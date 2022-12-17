@@ -74,7 +74,8 @@ impl RemoveNoopLandingPads {
             | TerminatorKind::Unreachable
             | TerminatorKind::Call { .. }
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::InlineAsm { .. } => false,
         }
     }

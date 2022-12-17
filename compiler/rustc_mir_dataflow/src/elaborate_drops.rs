@@ -225,7 +225,7 @@ where
     pub fn elaborate_drop(&mut self, bb: BasicBlock) {
         debug!("elaborate_drop({:?}, {:?})", bb, self);
         let style = self.elaborator.drop_style(self.path, DropFlagMode::Deep);
-        debug!("elaborate_drop({:?}, {:?}): live - {:?}", bb, self, style);
+
         match style {
             DropStyle::Dead => {
                 self.elaborator
@@ -233,12 +233,14 @@ where
                     .patch_terminator(bb, TerminatorKind::Goto { target: self.succ });
             }
             DropStyle::Static => {
+                let test = self.constant_bool(true);
                 self.elaborator.patch().patch_terminator(
                     bb,
-                    TerminatorKind::Drop {
+                    TerminatorKind::DropIf {
                         place: self.place,
                         target: self.succ,
                         unwind: self.unwind.into_option(),
+                        test,
                         is_replace: self.is_replace,
                     },
                 );
@@ -557,9 +559,14 @@ where
                 unwind_blocks.as_mut().unwrap().push(self.goto_block(unwind, Unwind::InCleanup));
             }
         } else {
-            normal_blocks.push(self.drop_block(succ, unwind));
+            let flag = self.constant_bool(true);
+            normal_blocks.push(self.drop_block(succ, unwind, flag.clone()));
             if let Unwind::To(unwind) = unwind {
-                unwind_blocks.as_mut().unwrap().push(self.drop_block(unwind, Unwind::InCleanup));
+                unwind_blocks.as_mut().unwrap().push(self.drop_block(
+                    unwind,
+                    Unwind::InCleanup,
+                    flag,
+                ));
             }
         }
 
@@ -611,6 +618,7 @@ where
             is_cleanup: unwind.is_cleanup(),
         };
         let switch_block = self.elaborator.patch().new_block(switch_block);
+        // FIXME: this is not very borrock friendly
         self.drop_flag_test_block(switch_block, succ, unwind)
     }
 
@@ -726,12 +734,14 @@ where
         };
         let loop_block = self.elaborator.patch().new_block(loop_block);
 
+        let test = self.constant_bool(true);
         self.elaborator.patch().patch_terminator(
             drop_block,
-            TerminatorKind::Drop {
+            TerminatorKind::DropIf {
                 place: tcx.mk_place_deref(ptr),
                 target: loop_block,
                 unwind: unwind.into_option(),
+                test,
                 is_replace: self.is_replace,
             },
         );
@@ -904,11 +914,14 @@ where
     }
 
     fn complete_drop(&mut self, succ: BasicBlock, unwind: Unwind) -> BasicBlock {
-        debug!("complete_drop(succ={:?}, unwind={:?})", succ, unwind);
-
-        let drop_block = self.drop_block(succ, unwind);
-
-        self.drop_flag_test_block(drop_block, succ, unwind)
+        let style = self.elaborator.drop_style(self.path, DropFlagMode::Shallow);
+        let flag = match style {
+            DropStyle::Dead => self.constant_bool(false),
+            DropStyle::Static => self.constant_bool(true),
+            _ => self.elaborator.get_drop_flag(self.path).unwrap(),
+        };
+        debug!("complete_drop(succ={:?}, unwind={:?}) {:?}", succ, unwind, flag);
+        self.drop_block(succ, unwind, flag)
     }
 
     /// Creates a block that resets the drop flag. If `mode` is deep, all children drop flags will
@@ -934,7 +947,8 @@ where
 
     fn elaborated_drop_block(&mut self) -> BasicBlock {
         debug!("elaborated_drop_block({:?})", self);
-        let blk = self.drop_block(self.succ, self.unwind);
+        // test will be immediately overridden by elaborate_drop()
+        let blk = self.drop_block(self.succ, self.unwind, self.constant_bool(true));
         self.elaborate_drop(blk);
         blk
     }
@@ -951,6 +965,8 @@ where
         unwind: Unwind,
     ) -> BasicBlock {
         let block = self.unelaborated_free_block(adt, substs, target, unwind);
+        // we need to keep the additional block here, freeing the backing memory of a `Box` is not
+        // handled with a drop terminator
         self.drop_flag_test_block(block, target, unwind)
     }
 
@@ -994,11 +1010,17 @@ where
         free_block
     }
 
-    fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
-        let block = TerminatorKind::Drop {
+    fn drop_block(
+        &mut self,
+        target: BasicBlock,
+        unwind: Unwind,
+        test: Operand<'tcx>,
+    ) -> BasicBlock {
+        let block = TerminatorKind::DropIf {
             place: self.place,
             target,
             unwind: unwind.into_option(),
+            test,
             is_replace: self.is_replace,
         };
         self.new_block(unwind, block)
@@ -1054,6 +1076,14 @@ where
             span: self.source_info.span,
             user_ty: None,
             literal: ConstantKind::from_usize(self.tcx(), val.into()),
+        }))
+    }
+
+    fn constant_bool(&self, val: bool) -> Operand<'tcx> {
+        Operand::Constant(Box::new(Constant {
+            span: self.source_info.span,
+            user_ty: None,
+            literal: ConstantKind::from_bool(self.tcx(), val),
         }))
     }
 

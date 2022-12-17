@@ -539,7 +539,8 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     | TerminatorKind::Abort
                     | TerminatorKind::Return
                     | TerminatorKind::Unreachable
-                    | TerminatorKind::Drop { .. }
+                    | TerminatorKind::DropIfInit { .. }
+                    | TerminatorKind::DropIf { .. }
                     | TerminatorKind::Assert { .. } => {}
                     TerminatorKind::Yield { .. }
                     | TerminatorKind::GeneratorDrop

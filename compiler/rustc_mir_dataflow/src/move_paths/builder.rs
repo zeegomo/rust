@@ -391,7 +391,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
 
-            TerminatorKind::Drop { place, .. } => {
+            TerminatorKind::DropIf { place, .. }| TerminatorKind::DropIfInit { place, .. } => {
                 self.create_move_path(place);
             }
             TerminatorKind::Call {

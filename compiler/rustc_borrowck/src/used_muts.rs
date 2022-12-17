@@ -71,8 +71,7 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
             TerminatorKind::Call { destination, .. } => {
                 self.remove_never_initialized_mut_locals(*destination);
             }
-            // FIXME: ??
-            // TerminatorKind::DropAndReplace { place, .. } => {
+            // TerminatorKind::DropIfInit { place, .. } => {
             //     self.remove_never_initialized_mut_locals(*place);
             // }
             _ => {}

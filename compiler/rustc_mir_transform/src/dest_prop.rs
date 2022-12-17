@@ -545,7 +545,7 @@ impl<'a> Conflicts<'a> {
     fn record_terminator_conflicts(&mut self, term: &Terminator<'_>) {
         match &term.kind {
             // FIXME: ??
-            // TerminatorKind::DropAndReplace {
+            // TerminatorKind::DropIfInitAndReplace {
             //     place: dropped_place,
             //     value,
             //     target: _,
@@ -698,7 +698,8 @@ impl<'a> Conflicts<'a> {
             | TerminatorKind::Abort
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }

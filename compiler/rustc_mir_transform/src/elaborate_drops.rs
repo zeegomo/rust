@@ -93,7 +93,7 @@ fn find_dead_unwinds<'tcx>(
         .into_results_cursor(body);
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
         let place = match bb_data.terminator().kind {
-            TerminatorKind::Drop { ref place, unwind: Some(_), .. } => {
+            TerminatorKind::DropIfInit { ref place, unwind: Some(_), .. } => {
                 und.derefer(place.as_ref(), body).unwrap_or(*place)
             }
             _ => continue,
@@ -301,7 +301,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
             let terminator = data.terminator();
             let place = match terminator.kind {
-                TerminatorKind::Drop { ref place, .. } => {
+                TerminatorKind::DropIfInit { ref place, .. } => {
                     self.un_derefer.derefer(place.as_ref(), self.body).unwrap_or(*place)
                 }
                 _ => continue,
@@ -358,7 +358,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
             let resume_block = self.patch.resume_block();
             match terminator.kind {
-                TerminatorKind::Drop { mut place, target, unwind, is_replace } => {
+                TerminatorKind::DropIfInit { mut place, target, unwind, is_replace } => {
                     if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
                         place = new_place;
                     }
@@ -387,10 +387,15 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                                 );
                             }
                             // If we cannot find it, it means it's a drop followed by a replace
-                            // -> unconditional dro
+                            // -> unconditional drop
+                            let test = Operand::Constant(Box::new(Constant {
+                                span: terminator.source_info.span,
+                                user_ty: None,
+                                literal: ConstantKind::from_bool(self.tcx, true),
+                            }));
                             Elaborator { ctxt: self }.patch().patch_terminator(
                                 bb,
-                                TerminatorKind::Drop {
+                                TerminatorKind::DropIf {
                                     place,
                                     target,
                                     unwind: if data.is_cleanup {
@@ -399,6 +404,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                                         Some(Option::unwrap_or(unwind, resume_block))
                                     },
                                     is_replace,
+                                    test,
                                 },
                             );
                         }
@@ -471,13 +477,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         // clobbered before they are read.
 
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
-            debug!("drop_flags_for_locs({:?})", data);
             for i in 0..(data.statements.len() + 1) {
-                debug!("drop_flag_for_locs: stmt {}", i);
                 let allow_initializations = true;
                 if i == data.statements.len() {
                     match data.terminator().kind {
-                        TerminatorKind::Drop { .. } => {
+                        TerminatorKind::DropIfInit { .. } => {
                             // drop elaboration should handle that by itself
                             continue;
                         }

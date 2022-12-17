@@ -112,7 +112,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::SwitchInt { ref discr, switch_ty: _, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { place: drop_place, target, unwind, is_replace } => {
+            TerminatorKind::DropIfInit { place: drop_place, target, unwind, is_replace }
+            | TerminatorKind::DropIf { place: drop_place, target, unwind, is_replace, test: _ } => {
                 let next_statement = if *is_replace {
                     self.body
                         .basic_blocks

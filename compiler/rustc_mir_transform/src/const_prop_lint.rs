@@ -691,7 +691,8 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::Abort
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }

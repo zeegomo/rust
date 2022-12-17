@@ -60,7 +60,7 @@ fn add_moves_for_packed_drops_patch<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) 
         let terminator = data.terminator();
 
         match terminator.kind {
-            TerminatorKind::Drop { place, .. }
+            TerminatorKind::DropIfInit { place, .. } | TerminatorKind::DropIf { place, .. }
                 if util::is_disaligned(tcx, body, param_env, place) =>
             {
                 add_move_for_packed_drop(tcx, body, &mut patch, terminator, loc, data.is_cleanup);
@@ -81,7 +81,7 @@ fn add_move_for_packed_drop<'tcx>(
     is_cleanup: bool,
 ) {
     debug!("add_move_for_packed_drop({:?} @ {:?})", terminator, loc);
-    let TerminatorKind::Drop { ref place, target, unwind, is_replace: _ } = terminator.kind else {
+    let (TerminatorKind::DropIfInit { ref place, target, unwind: _, is_replace: _ } | TerminatorKind::DropIf { ref place, target, .. }) = terminator.kind else {
         unreachable!();
     };
 
@@ -97,13 +97,25 @@ fn add_move_for_packed_drop<'tcx>(
 
     patch.add_statement(loc, StatementKind::StorageLive(temp));
     patch.add_assign(loc, Place::from(temp), Rvalue::Use(Operand::Move(*place)));
-    patch.patch_terminator(
-        loc.block,
-        TerminatorKind::Drop {
-            place: Place::from(temp),
-            target: storage_dead_block,
-            unwind,
-            is_replace: false,
-        },
-    );
+    let new_terminator = match terminator.kind.clone() {
+        TerminatorKind::DropIf { place: _, target: _, unwind, test, is_replace } => {
+            TerminatorKind::DropIf {
+                place: Place::from(temp),
+                target: storage_dead_block,
+                unwind,
+                test,
+                is_replace,
+            }
+        }
+        TerminatorKind::DropIfInit { place: _, target: _, unwind, is_replace } => {
+            TerminatorKind::DropIfInit {
+                place: Place::from(temp),
+                target: storage_dead_block,
+                unwind,
+                is_replace,
+            }
+        }
+        _ => unreachable!(),
+    };
+    patch.patch_terminator(loc.block, new_terminator);
 }

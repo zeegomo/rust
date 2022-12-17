@@ -413,7 +413,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         location: mir::Place<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
+        test: &mir::Operand<'tcx>,
     ) {
+        let drop_flag = self.codegen_operand(&mut bx, test);
+        let drop_block = bx.append_sibling_block("drop");
+        let lltarget = helper.llbb_with_cleanup(self, target);
+        bx.cond_br(drop_flag.immediate(), drop_block, lltarget);
+
+        bx.switch_to_block(drop_block);
+        self.set_debug_loc(&mut bx, helper.terminator.source_info);
+
         let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
@@ -1207,8 +1216,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.unreachable();
             }
 
-            mir::TerminatorKind::Drop { place, target, unwind, is_replace: _ } => {
-                self.codegen_drop_terminator(helper, bx, place, target, unwind);
+            mir::TerminatorKind::DropIf { place, target, unwind, is_replace: _, ref test } => {
+                self.codegen_drop_terminator(helper, bx, place, target, unwind, test);
             }
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
@@ -1240,6 +1249,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {
                 bug!("generator ops in codegen")
+            }
+            mir::TerminatorKind::DropIfInit { .. } => {
+                bug!(
+                    "drop elaboration should have removed this terminator in codegen {:?}",
+                    self.mir
+                )
             }
             mir::TerminatorKind::FalseEdge { .. } | mir::TerminatorKind::FalseUnwind { .. } => {
                 bug!("borrowck false edges in codegen")

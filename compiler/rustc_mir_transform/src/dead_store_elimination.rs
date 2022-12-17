@@ -44,6 +44,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
                     if !place.is_indirect() && !borrowed.contains(place.local) {
                         live.seek_before_primary_effect(loc);
                         if !live.get().contains(place.local) {
+                            // error!("killing {:?} {:?} {:?}", place, loc, body);
                             patch.push(loc);
                         }
                     }

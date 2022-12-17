@@ -481,7 +481,7 @@ fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>
         check_consts::post_drop_elaboration::check_live_drops(tcx, &body); // FIXME: make this a MIR lint
     }
 
-    debug!("runtime_mir_lowering({:?})", did);
+    debug!("runtime_mir_lowering({:?}) {:?}", did, body);
     run_runtime_lowering_passes(tcx, body);
     assert!(body.phase == MirPhase::Runtime(RuntimePhase::Initial));
 

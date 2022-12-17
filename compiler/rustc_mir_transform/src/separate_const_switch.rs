@@ -107,7 +107,8 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
 
                         // The following terminators are not allowed
                         TerminatorKind::Resume
-                        | TerminatorKind::Drop { .. }
+                        | TerminatorKind::DropIfInit { .. }
+                        | TerminatorKind::DropIf { .. }
                         | TerminatorKind::Call { .. }
                         | TerminatorKind::Assert { .. }
                         | TerminatorKind::FalseUnwind { .. }
@@ -170,7 +171,8 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Assert { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Yield { .. } => {

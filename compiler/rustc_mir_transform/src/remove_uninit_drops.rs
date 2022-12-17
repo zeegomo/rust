@@ -38,7 +38,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
         let mut to_remove = vec![];
         for (bb, block) in body.basic_blocks.iter_enumerated() {
             let terminator = block.terminator();
-            let TerminatorKind::Drop { place, .. }
+            let TerminatorKind::DropIfInit { place, .. }
                 = &terminator.kind
             else { continue };
 
@@ -65,7 +65,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
         for bb in to_remove {
             let block = &mut body.basic_blocks_mut()[bb];
 
-            let TerminatorKind::Drop { target, .. }
+            let TerminatorKind::DropIfInit { target, .. }
                 = &block.terminator().kind
             else { unreachable!() };
 

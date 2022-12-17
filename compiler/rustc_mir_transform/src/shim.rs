@@ -498,11 +498,12 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             self.make_clone_call(dest_field, src_field, ity, next_block, unwind);
             self.block(
                 vec![],
-                TerminatorKind::Drop {
+                TerminatorKind::DropIf {
                     place: dest_field,
                     target: unwind,
                     unwind: None,
                     is_replace: false,
+                    test: constant_bool(self.tcx, self.span, true),
                 },
                 true,
             );
@@ -757,11 +758,12 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop {
+            TerminatorKind::DropIf {
                 place: rcvr_place(),
                 target: BasicBlock::new(2),
                 unwind: None,
                 is_replace: false,
+                test: constant_bool(tcx, span, true),
             },
             false,
         );
@@ -773,11 +775,12 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop {
+            TerminatorKind::DropIf {
                 place: rcvr_place(),
                 target: BasicBlock::new(4),
                 unwind: None,
                 is_replace: false,
+                test: constant_bool(tcx, span, true),
             },
             true,
         );
@@ -860,4 +863,12 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
 
     body
+}
+
+fn constant_bool<'tcx>(tcx: TyCtxt<'tcx>, span: Span, value: bool) -> Operand<'tcx> {
+    Operand::Constant(Box::new(Constant {
+        span,
+        user_ty: None,
+        literal: ConstantKind::from_bool(tcx, value),
+    }))
 }

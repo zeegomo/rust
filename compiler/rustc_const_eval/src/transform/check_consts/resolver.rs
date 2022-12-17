@@ -223,7 +223,7 @@ where
         // here; that occurs in `apply_call_return_effect`.
 
         // FIXME ??
-        // if let mir::TerminatorKind::DropAndReplace { value, place, .. } = &terminator.kind {
+        // if let mir::TerminatorKind::DropIfInitAndReplace { value, place, .. } = &terminator.kind {
         //     let qualif = qualifs::in_operand::<Q, _>(
         //         self.ccx,
         //         &mut |l| self.state.qualif.contains(l),

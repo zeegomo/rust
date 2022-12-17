@@ -51,7 +51,8 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
         match terminator.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::Yield { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::GeneratorDrop

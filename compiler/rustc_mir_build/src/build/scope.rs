@@ -365,7 +365,7 @@ impl DropTree {
             let Some(block) = blocks[drop_idx] else { continue };
             match drop_data.0.kind {
                 DropKind::Value => {
-                    let terminator = TerminatorKind::Drop {
+                    let terminator = TerminatorKind::DropIfInit {
                         target: blocks[drop_data.1].unwrap(),
                         // The caller will handle this if needed.
                         unwind: None,
@@ -1048,7 +1048,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.block_data(start).terminator().kind,
                 TerminatorKind::Assert { .. }
                     | TerminatorKind::Call { .. }
-                    | TerminatorKind::Drop { .. }
+                    | TerminatorKind::DropIfInit { .. }
                     | TerminatorKind::FalseUnwind { .. }
                     | TerminatorKind::InlineAsm { .. }
             ),
@@ -1115,7 +1115,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::Drop {
+            TerminatorKind::DropIfInit {
                 place,
                 target: next_target,
                 unwind: Some(assign),
@@ -1224,7 +1224,7 @@ fn build_scope_drops<'tcx>(
                 cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Drop {
+                    TerminatorKind::DropIfInit {
                         place: local.into(),
                         target: next,
                         unwind: None,
@@ -1408,7 +1408,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
     fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
-            TerminatorKind::Drop { unwind, .. } => {
+            TerminatorKind::DropIfInit { unwind, .. } => {
                 if let Some(unwind) = unwind.clone() {
                     cfg.block_data_mut(unwind).terminator_mut().kind =
                         TerminatorKind::Goto { target: to };
@@ -1430,6 +1430,12 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. } => {
                 span_bug!(term.source_info.span, "cannot unwind from {:?}", term.kind)
+            }
+            TerminatorKind::DropIf { .. } => {
+                span_bug!(
+                    term.source_info.span,
+                    "drop if should only be present after drop elaboration"
+                )
             }
         }
     }

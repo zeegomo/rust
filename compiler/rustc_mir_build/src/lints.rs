@@ -134,7 +134,8 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             // These do not.
             TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
-            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropIfInit { .. }
+            | TerminatorKind::DropIf { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Goto { .. }
