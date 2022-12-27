@@ -462,14 +462,16 @@ fn locals_live_across_suspend_points<'tcx>(
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let mut storage_live = MaybeStorageLive::new(always_live_locals.clone())
-        .into_engine(tcx, body_ref)
+        .into_engine(tcx, body_ref, false)
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    let borrowed_locals_results =
-        MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
+    let borrowed_locals_results = MaybeBorrowedLocals
+        .into_engine(tcx, body_ref, false)
+        .pass_name("generator")
+        .iterate_to_fixpoint();
 
     let mut borrowed_locals_cursor =
         rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
@@ -477,14 +479,14 @@ fn locals_live_across_suspend_points<'tcx>(
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
     let requires_storage_results = MaybeRequiresStorage::new(body, &borrowed_locals_results)
-        .into_engine(tcx, body_ref)
+        .into_engine(tcx, body_ref, false)
         .iterate_to_fixpoint();
     let mut requires_storage_cursor =
         rustc_mir_dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness = MaybeLiveLocals
-        .into_engine(tcx, body_ref)
+        .into_engine(tcx, body_ref, false)
         .pass_name("generator")
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);

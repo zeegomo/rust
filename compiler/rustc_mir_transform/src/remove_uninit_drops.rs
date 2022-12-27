@@ -30,7 +30,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
 
         let mdpe = MoveDataParamEnv { move_data, param_env };
         let mut maybe_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
-            .into_engine(tcx, body)
+            .into_engine(tcx, body, false)
             .pass_name("remove_uninit_drops")
             .iterate_to_fixpoint()
             .into_results_cursor(body);

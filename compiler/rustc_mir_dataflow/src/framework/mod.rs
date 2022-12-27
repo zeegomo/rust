@@ -261,11 +261,12 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
+        live_code_only: bool,
     ) -> Engine<'mir, 'tcx, Self>
     where
         Self: Sized,
     {
-        Engine::new_generic(tcx, body, self)
+        Engine::new_generic(tcx, body, self, live_code_only)
     }
 }
 
@@ -419,11 +420,12 @@ where
         self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
+        live_code_only: bool,
     ) -> Engine<'mir, 'tcx, Self>
     where
         Self: Sized,
     {
-        Engine::new_gen_kill(tcx, body, self)
+        Engine::new_gen_kill(tcx, body, self, live_code_only)
     }
 }
 

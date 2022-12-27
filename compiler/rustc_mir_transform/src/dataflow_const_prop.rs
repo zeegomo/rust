@@ -51,7 +51,7 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
         let results = debug_span!("analyze")
-            .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
+            .in_scope(|| analysis.wrap().into_engine(tcx, body, false).iterate_to_fixpoint());
 
         // Collect results and patch the body afterwards.
         let mut visitor = CollectAndPatch::new(tcx, &results.analysis.0.map);

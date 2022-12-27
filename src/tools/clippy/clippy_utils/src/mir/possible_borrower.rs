@@ -183,7 +183,7 @@ impl<'a, 'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
             vis.into_map(cx)
         };
         let maybe_storage_live_result = MaybeStorageLive
-            .into_engine(cx.tcx, mir)
+            .into_engine(cx.tcx, mir, false)
             .pass_name("redundant_clone")
             .iterate_to_fixpoint()
             .into_results_cursor(mir);

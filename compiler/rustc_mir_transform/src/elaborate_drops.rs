@@ -64,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
             }
 
             let inits = MaybeInitializedPlaces::new(tcx, body, &env)
-                .into_engine(tcx, body)
+                .into_engine(tcx, body, true)
                 .dead_unwinds(&dead_unwinds)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
@@ -72,7 +72,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
                 .mark_inactive_variants_as_uninit()
-                .into_engine(tcx, body)
+                .into_engine(tcx, body, true)
                 .dead_unwinds(&dead_unwinds)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
@@ -110,7 +110,7 @@ fn find_dead_unwinds<'tcx>(
     // reach cleanup blocks, which can't have unwind edges themselves.
     let mut dead_unwinds = BitSet::new_empty(body.basic_blocks.len());
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &env)
-        .into_engine(tcx, body)
+        .into_engine(tcx, body, true)
         .pass_name("find_dead_unwinds")
         .iterate_to_fixpoint()
         .into_results_cursor(body);

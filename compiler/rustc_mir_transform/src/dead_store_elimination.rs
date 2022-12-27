@@ -24,7 +24,7 @@ use rustc_mir_dataflow::Analysis;
 /// can be generated via the [`borrowed_locals`] function.
 pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitSet<Local>) {
     let mut live = MaybeTransitiveLiveLocals::new(borrowed)
-        .into_engine(tcx, body)
+        .into_engine(tcx, body, false)
         .iterate_to_fixpoint()
         .into_results_cursor(body);
 

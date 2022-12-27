@@ -58,7 +58,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsDrop, ccx)
-                .into_engine(tcx, &body)
+                .into_engine(tcx, &body, false)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -85,7 +85,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsNonConstDrop, ccx)
-                .into_engine(tcx, &body)
+                .into_engine(tcx, &body, false)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -115,7 +115,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(HasMutInterior, ccx)
-                .into_engine(tcx, &body)
+                .into_engine(tcx, &body, false)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -163,7 +163,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
 
             hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
-                    .into_engine(ccx.tcx, &ccx.body)
+                    .into_engine(ccx.tcx, &ccx.body, false)
                     .iterate_to_fixpoint()
                     .into_results_cursor(&ccx.body);
 

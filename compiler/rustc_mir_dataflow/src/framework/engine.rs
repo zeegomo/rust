@@ -90,6 +90,7 @@ where
     // performance in practice. I've tried a few ways to avoid this, but they have downsides. See
     // the message for the commit that added this FIXME for more information.
     apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
+    live_code_only: bool,
 }
 
 impl<'a, 'tcx, A, D, T> Engine<'a, 'tcx, A>
@@ -99,13 +100,18 @@ where
     T: Idx,
 {
     /// Creates a new `Engine` to solve a gen-kill dataflow problem.
-    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, analysis: A) -> Self {
+    pub fn new_gen_kill(
+        tcx: TyCtxt<'tcx>,
+        body: &'a mir::Body<'tcx>,
+        analysis: A,
+        live_code_only: bool,
+    ) -> Self {
         // If there are no back-edges in the control-flow graph, we only ever need to apply the
         // transfer function for each block exactly once (assuming that we process blocks in RPO).
         //
         // In this case, there's no need to compute the block transfer functions ahead of time.
         if !body.basic_blocks.is_cfg_cyclic() {
-            return Self::new(tcx, body, analysis, None);
+            return Self::new(tcx, body, analysis, None, live_code_only);
         }
 
         // Otherwise, compute and store the cumulative transfer function for each block.
@@ -122,7 +128,7 @@ where
             trans_for_block[bb].apply(state);
         });
 
-        Self::new(tcx, body, analysis, Some(apply_trans as Box<_>))
+        Self::new(tcx, body, analysis, Some(apply_trans as Box<_>), live_code_only)
     }
 }
 
@@ -136,8 +142,13 @@ where
     ///
     /// Gen-kill problems should use `new_gen_kill`, which will coalesce transfer functions for
     /// better performance.
-    pub fn new_generic(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, analysis: A) -> Self {
-        Self::new(tcx, body, analysis, None)
+    pub fn new_generic(
+        tcx: TyCtxt<'tcx>,
+        body: &'a mir::Body<'tcx>,
+        analysis: A,
+        live_code_only: bool,
+    ) -> Self {
+        Self::new(tcx, body, analysis, None, live_code_only)
     }
 
     fn new(
@@ -145,6 +156,7 @@ where
         body: &'a mir::Body<'tcx>,
         analysis: A,
         apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
+        live_code_only: bool,
     ) -> Self {
         let bottom_value = analysis.bottom_value(body);
         let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), &body.basic_blocks);
@@ -162,6 +174,7 @@ where
             pass_name: None,
             entry_sets,
             apply_trans_for_block,
+            live_code_only,
         }
     }
 
@@ -197,14 +210,21 @@ where
             tcx,
             apply_trans_for_block,
             pass_name,
+            live_code_only,
             ..
         } = self;
 
         let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+        // could be tracked in `entry_sets`
+        let mut visited = BitSet::new_empty(body.basic_blocks.len());
 
         if A::Direction::IS_FORWARD {
-            for (bb, _) in traversal::reverse_postorder(body) {
-                dirty_queue.insert(bb);
+            if live_code_only {
+                dirty_queue.insert(mir::START_BLOCK);
+            } else {
+                for (bb, _) in traversal::reverse_postorder(body) {
+                    dirty_queue.insert(bb);
+                }
             }
         } else {
             // Reverse post-order on the reverse CFG may generate a better iteration order for
@@ -241,8 +261,9 @@ where
                 (bb, bb_data),
                 |target: BasicBlock, state: &A::Domain| {
                     let set_changed = entry_sets[target].join(state);
-                    if set_changed {
+                    if set_changed || !visited.contains(target) {
                         dirty_queue.insert(target);
+                        visited.insert(target);
                     }
                 },
             );

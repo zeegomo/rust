@@ -39,7 +39,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
             let flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
-                .into_engine(tcx, body)
+                .into_engine(tcx, body, false)
                 .iterate_to_fixpoint();
 
             sanity_check_via_rustc_peek(tcx, body, &flow_inits);
@@ -47,7 +47,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_uninit).is_some() {
             let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
-                .into_engine(tcx, body)
+                .into_engine(tcx, body, false)
                 .iterate_to_fixpoint();
 
             sanity_check_via_rustc_peek(tcx, body, &flow_uninits);
@@ -55,14 +55,14 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
             let flow_def_inits = DefinitelyInitializedPlaces::new(tcx, body, &mdpe)
-                .into_engine(tcx, body)
+                .into_engine(tcx, body, false)
                 .iterate_to_fixpoint();
 
             sanity_check_via_rustc_peek(tcx, body, &flow_def_inits);
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
-            let flow_liveness = MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint();
+            let flow_liveness = MaybeLiveLocals.into_engine(tcx, body, false).iterate_to_fixpoint();
 
             sanity_check_via_rustc_peek(tcx, body, &flow_liveness);
         }
