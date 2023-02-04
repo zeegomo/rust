@@ -1131,7 +1131,7 @@ macro_rules! visit_place_fns {
             let mut context = context;
 
             if !place.projection.is_empty() {
-                if context.is_use() {
+                if context.is_use() && !context.is_drop() {
                     // ^ Only change the context if it is a real use, not a "use" in debuginfo.
                     context = if context.is_mutating_use() {
                         PlaceContext::MutatingUse(MutatingUseContext::Projection)

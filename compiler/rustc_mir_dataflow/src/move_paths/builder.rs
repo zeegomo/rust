@@ -392,7 +392,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
 
             TerminatorKind::Drop { place, target: _, unwind: _ } => {
-                self.gather_move(place);
+                self.create_move_path(place);
             }
             TerminatorKind::DropAndReplace { place, ref value, .. } => {
                 self.create_move_path(place);
@@ -408,13 +408,23 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 from_hir_call: _,
                 fn_span: _,
             } => {
-                self.gather_operand(func);
-                for arg in args {
-                    self.gather_operand(arg);
-                }
+
                 if let Some(_bb) = target {
                     self.create_move_path(destination);
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
+                }
+                self.gather_operand(func);
+                let func_ty = func.ty(self.builder.body, self.builder.tcx);
+                use rustc_hir::lang_items::LangItem;
+                if let ty::FnDef(func_id, _) = func_ty.kind() {
+                    if Some(func_id) == self.builder.tcx.lang_items().get(LangItem::BoxFree).as_ref()
+                    {
+                        return;
+                    }
+                }
+
+                for arg in args {
+                    self.gather_operand(arg);
                 }
             }
             TerminatorKind::InlineAsm {
