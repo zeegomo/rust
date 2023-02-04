@@ -576,8 +576,9 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
 
         match &stmt.kind {
             StatementKind::Assign(box (lhs, rhs)) => {
+                if !matches!(rhs, Rvalue::Discriminant(_)) {
                 self.consume_rvalue(location, (rhs, span), flow_state);
-
+                }
                 self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
             }
             StatementKind::FakeRead(box (_, place)) => {
@@ -661,13 +662,12 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 );
             }
             TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: new_value,
+                place: _drop_place,
+                value: _new_value,
                 target: _,
                 unwind: _,
             } => {
-                self.mutate_place(loc, (*drop_place, span), Deep, flow_state);
-                self.consume_operand(loc, (new_value, span), flow_state);
+                panic!();
             }
             TerminatorKind::Call {
                 func,
@@ -678,6 +678,16 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 from_hir_call: _,
                 fn_span: _,
             } => {
+                let func_ty = func.ty(self.body, self.infcx.tcx);
+                use rustc_hir::lang_items::LangItem;
+                if let ty::FnDef(func_id, _) = func_ty.kind() {
+                    if Some(func_id) == self.infcx.tcx.lang_items().get(LangItem::BoxFree).as_ref()
+                    {
+                        self.mutate_place(loc, (*destination, span), Deep, flow_state);
+                        return;
+                    }
+                }
+
                 self.consume_operand(loc, (func, span), flow_state);
                 for arg in args {
                     self.consume_operand(loc, (arg, span), flow_state);

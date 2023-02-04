@@ -300,6 +300,8 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<
             &Lint(function_item_references::FunctionItemReferences),
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
+            &elaborate_drops::ElaborateDrops,
+            &simplify::SimplifyCfg::new("elaborate-drops"),
             &rustc_peek::SanityCheck, // Just a lint
         ],
         None,
@@ -510,7 +512,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
-        &elaborate_drops::ElaborateDrops,
+        // &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer
         // necessary as well as well as forcing any call in a non-unwinding
         // function calling a possibly-unwinding function to abort the process.

@@ -1,4 +1,3 @@
-use crate::deref_separator::deref_finder;
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
@@ -25,7 +24,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
 
         let def_id = body.source.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
+        let param_env = tcx.param_env(def_id);
         let (side_table, move_data) = match MoveData::gather_moves(body, tcx, param_env) {
             Ok(move_data) => move_data,
             Err((move_data, _)) => {
@@ -69,7 +68,6 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
             .elaborate()
         };
         elaborate_patch.apply(body);
-        deref_finder(tcx, body);
     }
 }
 
@@ -425,10 +423,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let data = &self.body[bb];
         let terminator = data.terminator();
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
-
+        let source_info = terminator.source_info;
+        // source_info.scope = self.body.source_scopes[source_info.scope].parent_scope.unwrap();
         let assign = Statement {
             kind: StatementKind::Assign(Box::new((place, Rvalue::Use(value.clone())))),
-            source_info: terminator.source_info,
+            source_info,
         };
 
         let unwind = unwind.unwrap_or_else(|| self.patch.resume_block());
