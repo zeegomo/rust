@@ -20,7 +20,7 @@ use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::cache::{Cache, Interned, INTERNER};
 use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
 use crate::Crate;
-use crate::EXTRA_CHECK_CFGS;
+// use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -1414,18 +1414,18 @@ impl<'a> Builder<'a> {
         // features but cargo isn't involved in the #[path] process and so cannot pass the
         // complete list of features, so for that reason we don't enable checking of
         // features for std crates.
-        if use_new_check_cfg_syntax {
-            cargo.arg("-Zcheck-cfg");
-            if mode == Mode::Std {
-                rustflags.arg("--check-cfg=cfg(feature,values(any()))");
-            }
-        } else {
-            cargo.arg(if mode != Mode::Std {
-                "-Zcheck-cfg=names,values,output,features"
-            } else {
-                "-Zcheck-cfg=names,values,output"
-            });
-        }
+        // if use_new_check_cfg_syntax {
+        //     cargo.arg("-Zcheck-cfg");
+        //     if mode == Mode::Std {
+        //         rustflags.arg("--check-cfg=cfg(feature,values(any()))");
+        //     }
+        // } else {
+        //     cargo.arg(if mode != Mode::Std {
+        //         "-Zcheck-cfg=names,values,output,features"
+        //     } else {
+        //         "-Zcheck-cfg=names,values,output"
+        //     });
+        // }
 
         // Add extra cfg not defined in/by rustc
         //
@@ -1433,26 +1433,26 @@ impl<'a> Builder<'a> {
         // cargo would implicitly add it, it was discover that sometimes bootstrap only use
         // `rustflags` without `cargo` making it required.
         rustflags.arg("-Zunstable-options");
-        for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
-            if *restricted_mode == None || *restricted_mode == Some(mode) {
-                // Creating a string of the values by concatenating each value:
-                // ',"tvos","watchos"' or '' (nothing) when there are no values
-                let values = match values {
-                    Some(values) => values
-                        .iter()
-                        .map(|val| [",", "\"", val, "\""])
-                        .flatten()
-                        .collect::<String>(),
-                    None => String::new(),
-                };
-                if use_new_check_cfg_syntax {
-                    let values = values.strip_prefix(",").unwrap_or(&values); // remove the first `,`
-                    rustflags.arg(&format!("--check-cfg=cfg({name},values({values}))"));
-                } else {
-                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
-                }
-            }
-        }
+        // for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
+        //     if *restricted_mode == None || *restricted_mode == Some(mode) {
+        //         // Creating a string of the values by concatenating each value:
+        //         // ',"tvos","watchos"' or '' (nothing) when there are no values
+        //         let values = match values {
+        //             Some(values) => values
+        //                 .iter()
+        //                 .map(|val| [",", "\"", val, "\""])
+        //                 .flatten()
+        //                 .collect::<String>(),
+        //             None => String::new(),
+        //         };
+        //         if use_new_check_cfg_syntax {
+        //             let values = values.strip_prefix(",").unwrap_or(&values); // remove the first `,`
+        //             rustflags.arg(&format!("--check-cfg=cfg({name},values({values}))"));
+        //         } else {
+        //             rustflags.arg(&format!("--check-cfg=values({name}{values})"));
+        //         }
+        //     }
+        // }
 
         // FIXME(rust-lang/cargo#5754) we shouldn't be using special command arguments
         // to the host invocation here, but rather Cargo should know what flags to pass rustc

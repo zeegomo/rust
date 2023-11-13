@@ -82,43 +82,43 @@ pub const CONFIG_CHANGE_HISTORY: &[usize] = &[115898, 116998, 117435, 116881];
 
 /// Extra --check-cfg to add when building
 /// (Mode restriction, config name, config values (if any))
-const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
-    (None, "bootstrap", None),
-    (Some(Mode::Rustc), "parallel_compiler", None),
-    (Some(Mode::ToolRustc), "parallel_compiler", None),
-    (Some(Mode::Codegen), "parallel_compiler", None),
-    (Some(Mode::Std), "stdarch_intel_sde", None),
-    (Some(Mode::Std), "no_fp_fmt_parse", None),
-    (Some(Mode::Std), "no_global_oom_handling", None),
-    (Some(Mode::Std), "no_rc", None),
-    (Some(Mode::Std), "no_sync", None),
-    (Some(Mode::Std), "freebsd12", None),
-    (Some(Mode::Std), "freebsd13", None),
-    (Some(Mode::Std), "backtrace_in_libstd", None),
-    /* Extra values not defined in the built-in targets yet, but used in std */
-    (Some(Mode::Std), "target_env", Some(&["libnx"])),
-    // (Some(Mode::Std), "target_os", Some(&[])),
-    (Some(Mode::Std), "target_arch", Some(&["asmjs", "spirv", "nvptx", "xtensa"])),
-    /* Extra names used by dependencies */
-    // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
-    (Some(Mode::ToolRustc), "no_btreemap_remove_entry", None),
-    // FIXME: Used by crossbeam-utils, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "crossbeam_loom", None),
-    (Some(Mode::ToolRustc), "crossbeam_loom", None),
-    // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "span_locations", None),
-    (Some(Mode::ToolRustc), "span_locations", None),
-    // FIXME: Used by rustix, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "rustix_use_libc", None),
-    (Some(Mode::ToolRustc), "rustix_use_libc", None),
-    // FIXME: Used by filetime, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "emulate_second_only_system", None),
-    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
-    // Needed to avoid the need to copy windows.lib into the sysroot.
-    (Some(Mode::Rustc), "windows_raw_dylib", None),
-    (Some(Mode::ToolRustc), "windows_raw_dylib", None),
-];
+// const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
+//     (None, "bootstrap", None),
+//     (Some(Mode::Rustc), "parallel_compiler", None),
+//     (Some(Mode::ToolRustc), "parallel_compiler", None),
+//     (Some(Mode::Codegen), "parallel_compiler", None),
+//     (Some(Mode::Std), "stdarch_intel_sde", None),
+//     (Some(Mode::Std), "no_fp_fmt_parse", None),
+//     (Some(Mode::Std), "no_global_oom_handling", None),
+//     (Some(Mode::Std), "no_rc", None),
+//     (Some(Mode::Std), "no_sync", None),
+//     (Some(Mode::Std), "freebsd12", None),
+//     (Some(Mode::Std), "freebsd13", None),
+//     (Some(Mode::Std), "backtrace_in_libstd", None),
+//     /* Extra values not defined in the built-in targets yet, but used in std */
+//     (Some(Mode::Std), "target_env", Some(&["libnx"])),
+//     // (Some(Mode::Std), "target_os", Some(&[])),
+//     (Some(Mode::Std), "target_arch", Some(&["asmjs", "spirv", "nvptx", "xtensa"])),
+//     /* Extra names used by dependencies */
+//     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
+//     (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
+//     (Some(Mode::ToolRustc), "no_btreemap_remove_entry", None),
+//     // FIXME: Used by crossbeam-utils, but we should not be triggering on external dependencies.
+//     (Some(Mode::Rustc), "crossbeam_loom", None),
+//     (Some(Mode::ToolRustc), "crossbeam_loom", None),
+//     // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
+//     (Some(Mode::Rustc), "span_locations", None),
+//     (Some(Mode::ToolRustc), "span_locations", None),
+//     // FIXME: Used by rustix, but we should not be triggering on external dependencies.
+//     (Some(Mode::Rustc), "rustix_use_libc", None),
+//     (Some(Mode::ToolRustc), "rustix_use_libc", None),
+//     // FIXME: Used by filetime, but we should not be triggering on external dependencies.
+//     (Some(Mode::Rustc), "emulate_second_only_system", None),
+//     (Some(Mode::ToolRustc), "emulate_second_only_system", None),
+//     // Needed to avoid the need to copy windows.lib into the sysroot.
+//     (Some(Mode::Rustc), "windows_raw_dylib", None),
+//     (Some(Mode::ToolRustc), "windows_raw_dylib", None),
+// ];
 
 /// A structure representing a Rust compiler.
 ///
