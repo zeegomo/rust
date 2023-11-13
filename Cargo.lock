@@ -70,6 +70,7 @@ version = "0.0.0"
 dependencies = [
  "compiler_builtins",
  "core",
+ "portable-atomic 1.5.1",
  "rand",
  "rand_xorshift",
 ]
@@ -833,6 +834,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b540bd8bc810d3885c6ea91e2018302f68baba2129ab3e88f32389ee9370880d"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "critical-section"
+version = "1.1.2"
+dependencies = [
+ "compiler_builtins",
+ "core",
 ]
 
 [[package]]
@@ -2047,7 +2056,7 @@ dependencies = [
  "console",
  "instant",
  "number_prefix",
- "portable-atomic",
+ "portable-atomic 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-width",
 ]
 
@@ -3023,6 +3032,15 @@ dependencies = [
 [[package]]
 name = "portable-atomic"
 version = "1.5.1"
+dependencies = [
+ "compiler_builtins",
+ "core",
+ "critical-section",
+]
+
+[[package]]
+name = "portable-atomic"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bccab0e7fd7cc19f820a1c8c91720af652d0c88dc9664dd72aef2614f04af3b"
 
@@ -3750,7 +3768,7 @@ dependencies = [
  "measureme",
  "memmap2",
  "parking_lot 0.12.1",
- "portable-atomic",
+ "portable-atomic 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",

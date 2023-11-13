@@ -1,0 +1,9 @@
+# Includes one of the default files in src/bootstrap/defaults
+profile = "compiler"
+change-id = 116881
+
+
+[build]
+target = ["riscv32im-unknown-none-elf"]
+extended = true
+tools = ["cargo", "cargo-clippy", "clippy", "rustfmt"]

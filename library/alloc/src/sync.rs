@@ -27,8 +27,11 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
+#[cfg(target_has_atomic = "ptr")]
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+#[cfg(not(target_has_atomic = "ptr"))]
+use portable_atomic as atomic;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
