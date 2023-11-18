@@ -10,7 +10,7 @@ edition = "2021"
 
 [dependencies]
 core = { path = "../core" }
-portable-atomic = { path = "../../../portable-atomic", features = ["require-cas", "critical-section"] }
+portable-atomic = { path = "../../portable-atomic", features = ["require-cas", "critical-section"] }
 compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]

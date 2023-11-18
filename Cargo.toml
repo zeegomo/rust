@@ -44,6 +44,8 @@ members = [
   "src/tools/rustdoc-gui-test",
   "src/tools/opt-dist",
   "src/tools/coverage-dump",
+  "critical-section",
+  "portable-atomic",
 ]
 
 exclude = [
